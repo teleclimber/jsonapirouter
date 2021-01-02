@@ -58,6 +58,61 @@ func TestGetHandleType(t *testing.T) {
 
 }
 
+func TestGetCollectionHandler(t *testing.T) {
+	router := NewJSONAPIRouter(nil)
+	touched := false
+	hIn := func(res http.ResponseWriter, httpReq *http.Request, apiReq *jsonapi.Request) {
+		touched = true
+	}
+	router.GetCollection("abc", hIn)
+	hOut, ok := router.getCollectionHandler("abc")
+	if !ok {
+		t.Error("expected a handler")
+	}
+	hOut(nil, nil, nil)
+	if !touched {
+		t.Error("got the wrong handler?")
+	}
+
+	hOut, ok = router.getCollectionHandler("def")
+	if ok {
+		t.Error("def should not return a handler")
+	}
+	if hOut != nil {
+		t.Error("hOut should be nil")
+	}
+}
+
+func TestGetRelatedHandler(t *testing.T) {
+	router := NewJSONAPIRouter(nil)
+	touched := false
+	hGood := func(res http.ResponseWriter, httpReq *http.Request, apiReq *jsonapi.Request) {
+		touched = true
+	}
+	hBad := func(res http.ResponseWriter, httpReq *http.Request, apiReq *jsonapi.Request) {}
+
+	router.GetRelated("abc", "xyz", hGood)
+	router.GetRelated("abc", "other", hBad)
+	router.GetRelated("bad", "other", hBad)
+
+	hOut, ok := router.getRelatedHandler("abc", "xyz")
+	if !ok {
+		t.Error("Expcted tog et a handler")
+	}
+	hOut(nil, nil, nil)
+	if !touched {
+		t.Error("expected the right handler")
+	}
+	hOut, ok = router.getRelatedHandler("abc", "def")
+	if ok {
+		t.Error("should not have found handler")
+	}
+	hOut, ok = router.getRelatedHandler("zzz", "def")
+	if ok {
+		t.Error("should not have found handler")
+	}
+}
+
 func TestHandlers(t *testing.T) {
 	schema := getTestSchema()
 	router := NewJSONAPIRouter(schema)

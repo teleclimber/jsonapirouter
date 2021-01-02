@@ -1,6 +1,7 @@
 package jsonapirouter
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -33,19 +34,21 @@ const (
 type JSONAPIRouter struct {
 	schema *jsonapi.Schema
 
-	getCollectionHandlers map[string]JSONAPIRouteHandler
-	getResourceHandlers   map[string]JSONAPIRouteHandler
-	getRelatedHandlers    map[string]map[string]JSONAPIRouteHandler
+	getCollectionHandlers    map[string]JSONAPIRouteHandler
+	getResourceHandlers      map[string]JSONAPIRouteHandler
+	getRelatedHandlers       map[string]map[string]JSONAPIRouteHandler
+	getRelationshipsHandlers map[string]map[string]JSONAPIRouteHandler
 	// ... all the types, possibly subdivided
 }
 
 // NewJSONAPIRouter returns a JSONAPIRouters initialized
 func NewJSONAPIRouter(schema *jsonapi.Schema) *JSONAPIRouter {
 	return &JSONAPIRouter{
-		schema:                schema,
-		getCollectionHandlers: make(map[string]JSONAPIRouteHandler),
-		getResourceHandlers:   make(map[string]JSONAPIRouteHandler),
-		getRelatedHandlers:    make(map[string]map[string]JSONAPIRouteHandler),
+		schema:                   schema,
+		getCollectionHandlers:    make(map[string]JSONAPIRouteHandler),
+		getResourceHandlers:      make(map[string]JSONAPIRouteHandler),
+		getRelatedHandlers:       make(map[string]map[string]JSONAPIRouteHandler),
+		getRelationshipsHandlers: make(map[string]map[string]JSONAPIRouteHandler),
 	}
 }
 
@@ -90,68 +93,71 @@ func (r *JSONAPIRouter) getHandleType(apiReq *jsonapi.Request) handlerType {
 func (r *JSONAPIRouter) getHandler(hType handlerType, apiReq *jsonapi.Request) (handler JSONAPIRouteHandler, ok bool) {
 	switch hType {
 	case getCollection:
-		handler, ok = r.getCollectionHandler(apiReq.URL.ResType)
+		handler, ok = r.getCollectionHandler(apiReq.URL.ResType) // might replace these with getHandler(r.cetCollenctionHandlers, ...)
 	case getResource:
 		handler, ok = r.getResourceHandler(apiReq.URL.ResType)
 	case getRelated:
 		handler, ok = r.getRelatedHandler(apiReq.URL.BelongsToFilter.Type, apiReq.URL.Rel.FromName)
+	case getRelationships:
+		handler, ok = r.getRelationshipsHandler(apiReq.URL.BelongsToFilter.Type, apiReq.URL.Rel.FromName)
+	// TODO: other handlers...
 	default:
 		panic("not handled yet.")
 	}
 	return
 }
 
-// GetCollection GET /articles
+// GetCollection sets the handler for requests like
+// GET /articles
 func (r *JSONAPIRouter) GetCollection(resType string, handler JSONAPIRouteHandler) {
-	_, ok := r.getCollectionHandlers[resType]
-	if ok {
-		panic("GetCollection handler already exists for " + resType)
+	err := setHandler(r.getCollectionHandlers, resType, handler)
+	if err != nil {
+		panic(err)
 	}
-	r.getCollectionHandlers[resType] = handler
 }
 func (r *JSONAPIRouter) getCollectionHandler(resType string) (JSONAPIRouteHandler, bool) {
 	h, ok := r.getCollectionHandlers[resType]
 	return h, ok
 }
 
-// GetResource GET /articles/1
+// GetResource sets the handler for requests like
+// GET /articles/1
 func (r *JSONAPIRouter) GetResource(resType string, handler JSONAPIRouteHandler) {
-	_, ok := r.getResourceHandlers[resType]
-	if ok {
-		panic("GetResource handler already exists for " + resType)
+	err := setHandler(r.getResourceHandlers, resType, handler)
+	if err != nil {
+		panic(err)
 	}
-	r.getResourceHandlers[resType] = handler
 }
 func (r *JSONAPIRouter) getResourceHandler(resType string) (JSONAPIRouteHandler, bool) {
 	h, ok := r.getResourceHandlers[resType]
 	return h, ok
 }
 
-// GetRelated GET /articles/1/author
+// GetRelated sets the handler for requests like
+// GET /articles/1/author
 // This one is a bit weird because you're returning a relType, filtered by belonging to resType
 func (r *JSONAPIRouter) GetRelated(resType string, relName string, handler JSONAPIRouteHandler) {
-	_, ok := r.getRelatedHandlers[resType]
-	if !ok {
-		r.getRelatedHandlers[resType] = make(map[string]JSONAPIRouteHandler)
+	err := setHandlerRel(r.getRelatedHandlers, resType, relName, handler)
+	if err != nil {
+		panic(err)
 	}
-	_, ok = r.getRelatedHandlers[resType][relName]
-	if ok {
-		panic(fmt.Sprintf("GetRelated handler already exists for %v -> %v", resType, relName))
-	}
-	r.getRelatedHandlers[resType][relName] = handler
 }
 func (r *JSONAPIRouter) getRelatedHandler(resType string, relName string) (handler JSONAPIRouteHandler, ok bool) {
-	handlers, ok := r.getRelatedHandlers[resType]
-	if !ok {
-		return
-	}
-	handler, ok = handlers[relName]
+	handler, ok = getHandlerRel(r.getRelatedHandlers, resType, relName)
 	return
 }
 
-// GetRelationships GET /articles/1/relationships/author
-func (r *JSONAPIRouter) GetRelationships(resType string, relType string, handler JSONAPIRouteHandler) {
-
+// GetRelationships sets the handler for requests like
+// GET /articles/1/relationships/author
+func (r *JSONAPIRouter) GetRelationships(resType string, relName string, handler JSONAPIRouteHandler) {
+	err := setHandlerRel(r.getRelationshipsHandlers, resType, relName, handler)
+	if err != nil {
+		panic(err)
+	}
+}
+func (r *JSONAPIRouter) getRelationshipsHandler(resType string, relName string) (handler JSONAPIRouteHandler, ok bool) {
+	handler, ok = getHandlerRel(r.getRelationshipsHandlers, resType, relName)
+	return
 }
 
 // CreateResource POST /articles
@@ -172,4 +178,36 @@ func (r *JSONAPIRouter) UpdateRelationships(resType string, relType string, hand
 // DeleteResource DELETE /articles/1
 func (r *JSONAPIRouter) DeleteResource(resType string, handler JSONAPIRouteHandler) {
 
+}
+
+// common handler management code
+
+func setHandler(handlers map[string]JSONAPIRouteHandler, resType string, handler JSONAPIRouteHandler) error {
+	_, ok := handlers[resType]
+	if ok {
+		return errors.New("GetResource handler already exists for " + resType) // sentinel error so we can deal more effectively?
+	}
+	handlers[resType] = handler
+	return nil
+}
+
+func setHandlerRel(handlers map[string]map[string]JSONAPIRouteHandler, resType string, relName string, handler JSONAPIRouteHandler) error {
+	_, ok := handlers[resType]
+	if !ok {
+		handlers[resType] = make(map[string]JSONAPIRouteHandler)
+	}
+	_, ok = handlers[resType][relName]
+	if ok {
+		return fmt.Errorf("handler already exists for %v -> %v", resType, relName)
+	}
+	handlers[resType][relName] = handler
+	return nil
+}
+func getHandlerRel(handlers map[string]map[string]JSONAPIRouteHandler, resType string, relName string) (handler JSONAPIRouteHandler, ok bool) {
+	resTypeHandlers, ok := handlers[resType]
+	if !ok {
+		return
+	}
+	handler, ok = resTypeHandlers[relName]
+	return
 }

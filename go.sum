@@ -1,6 +1,8 @@
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/mfcochauxlaberge/jsonapi v0.18.2-0.20201230201342-d73d2322dd3f h1:EigFQkIv9Eru59Rh4QEfnSzLfGN2gJFdS0zCc7qVH3w=
 github.com/mfcochauxlaberge/jsonapi v0.18.2-0.20201230201342-d73d2322dd3f/go.mod h1:na7WggclpFJrV1Fm5YYHZ6bpxP5yqar7jUfy98Noz4s=
+github.com/mfcochauxlaberge/jsonapi v0.18.2-0.20210103155918-1458cda7b432 h1:sXX63dplj2Z3vIJFyBS+ldU+zHtwH+V8V/KJBs0JkhA=
+github.com/mfcochauxlaberge/jsonapi v0.18.2-0.20210103155918-1458cda7b432/go.mod h1:na7WggclpFJrV1Fm5YYHZ6bpxP5yqar7jUfy98Noz4s=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=

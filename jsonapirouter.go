@@ -81,12 +81,14 @@ func (r *JSONAPIRouter) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
 	su, err := jsonapi.NewSimpleURL(req.URL)
 	if err != nil {
-		//return nil, err
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	rReq.URL, err = jsonapi.NewURL(r.schema, su)
 	if err != nil {
-		//todo
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	rReq.Doc = &jsonapi.Document{}

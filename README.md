@@ -8,7 +8,7 @@ This code assumes that the resources that make up the responses are available in
 
 ## Experimental Code 
 
-This code is experimental and rough and lacking in tests and robustness. Don't expect this to change very soon.
+This code is experimental, incomplete, rough, and lacking in tests and robustness.
 
 ## Router
 
@@ -26,6 +26,10 @@ The router helps you divide your API code into different handlers. This code ass
 For each of the types of your API, you can associate a handler as follows:
 
 ```
+// Create the router
+router := jsonapirouter.NewJSONAPIRouter(schema)
+
+// Set a handler
 router.GetCollection("articles", getArticles)
 ```
 
@@ -48,9 +52,9 @@ Where `RouterReq` is a struct that has the `URL`, `Document`, and `Includes` (se
 
 ## Includes
 
-Now that requests are dispatched to a handler, the next problem is minimizing code duplication for handling included resources.JSON:API handlers are prone to duplicate code, because all handlers for types that are related to another type may have to load that related type.
+Now that requests are dispatched to a handler, the next problem is minimizing code duplication for handling included resources. JSON:API handlers are prone to duplicate code, because all handlers for types that are related to another type may have to load that related type.
 
-`jsonapirouter.Includes` can
+`jsonapirouter.Includes` can:
 
 - determine which resource ids need to be included based on the requests parameters and the value of `jsonapi.Document.Data`
 - hold on to Resources that have been loaded from the DB so they can be included automatically if required
@@ -58,7 +62,7 @@ Now that requests are dispatched to a handler, the next problem is minimizing co
 
 Depending on your DB and models code, fetching a primary resource may include the id of a related resource that ought to be included. This is common with to-one relationships.
 
-In other cases, to get related ids, you will have to perform an additional DB request, and this request may include complete data for related resources, not just ids.
+In other cases, to get related ids, you will have to perform an additional DB query, and this may return complete data for related resources, not just ids.
 
 In either case, `Includes` can help.
 
@@ -86,7 +90,7 @@ rReq.Doc.Data = myResource
 return // you're done.
 ```
 
-After the route handler runs the router will process the `Data` and concoct a list of ids it needs, feed it to the loader and include the resources in the `Document`.
+After the route handler runs the router will process the `Data` and build a list of ids it needs, feed it to the loader and include the resources in the `Document`.
 
 ### Got the Related Resources
 
@@ -101,7 +105,7 @@ The ids of Resources that are "held" will not be sent to the loader. This preven
 Basically the point of `jsonapirouter.Includes` is to collect the *ids* that need to be included, then load only the missing ones, as opposed to loading a lot of data from the DB and ignoring duplicates.
 
 
-## Collection
+## Bonus: Collection
 
 Collection is a small helper that makes it easier to create collections in your handlers.
 

@@ -20,7 +20,7 @@ type Status int
 const (
 	OK Status = iota
 	NotFound
-	Unauthorized
+	Forbidden
 	Error
 	// check json:api spec
 )
@@ -60,6 +60,7 @@ type JSONAPIRouter struct {
 	getResourceHandlers      map[string]JSONAPIRouteHandler
 	getRelatedHandlers       map[string]map[string]JSONAPIRouteHandler
 	getRelationshipsHandlers map[string]map[string]JSONAPIRouteHandler
+	updateResourceHandlers   map[string]JSONAPIRouteHandler
 	// ... all the types, possibly subdivided
 }
 
@@ -72,6 +73,7 @@ func NewJSONAPIRouter(schema *jsonapi.Schema) *JSONAPIRouter {
 		getResourceHandlers:      make(map[string]JSONAPIRouteHandler),
 		getRelatedHandlers:       make(map[string]map[string]JSONAPIRouteHandler),
 		getRelationshipsHandlers: make(map[string]map[string]JSONAPIRouteHandler),
+		updateResourceHandlers:   make(map[string]JSONAPIRouteHandler),
 	}
 }
 
@@ -108,8 +110,8 @@ func (r *JSONAPIRouter) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	if status == Error {
 		http.Error(res, "some error", 500)
 		return
-	} else if status == Unauthorized {
-		http.Error(res, "unauthorized", 403)
+	} else if status == Forbidden { // this should be forbidden. 403 is correct though.
+		http.Error(res, "Forbidden", 403)
 		return
 	}
 	// more ways to handle, and do it appropriately wrt json:api spec
@@ -146,11 +148,14 @@ func (r *JSONAPIRouter) getHandleType(method string, u *jsonapi.URL) handlerType
 			return getRelated
 		} else if u.RelKind == "self" {
 			return getRelationships
-		} else {
-			panic("i dont understand this url")
 		}
+		panic("i dont understand this url")
 
 	case http.MethodPatch:
+		if !u.IsCol && u.ResID != "" && u.RelKind == "" {
+			return updateResource
+		}
+		panic("i don't understand this url")
 
 	case http.MethodDelete:
 
@@ -169,6 +174,8 @@ func (r *JSONAPIRouter) getHandler(hType handlerType, u *jsonapi.URL) (handler J
 		handler, ok = r.getRelatedHandler(u.BelongsToFilter.Type, u.Rel.FromName)
 	case getRelationships:
 		handler, ok = r.getRelationshipsHandler(u.BelongsToFilter.Type, u.Rel.FromName)
+	case updateResource:
+		handler, ok = r.updateResourceHandler(u.ResType)
 	// TODO: other handlers...
 	default:
 		panic("not handled yet.")
@@ -236,8 +243,17 @@ func (r *JSONAPIRouter) CreateResource(resType string, handler JSONAPIRouteHandl
 
 // UpdateResource PATCH /articles/1
 func (r *JSONAPIRouter) UpdateResource(resType string, handler JSONAPIRouteHandler) {
-
+	err := setHandler(r.updateResourceHandlers, resType, handler)
+	if err != nil {
+		panic(err)
+	}
 }
+func (r *JSONAPIRouter) updateResourceHandler(resType string) (JSONAPIRouteHandler, bool) {
+	h, ok := r.updateResourceHandlers[resType]
+	return h, ok
+}
+
+// and teh handler getter
 
 // UpdateRelationships PATCH /articles/1/relationships/author
 func (r *JSONAPIRouter) UpdateRelationships(resType string, relType string, handler JSONAPIRouteHandler) {

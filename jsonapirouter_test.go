@@ -29,6 +29,7 @@ func TestGetHandleType(t *testing.T) {
 		/////// invalid request {http.MethodGet, "/articles/1/relationships", getRelationships},
 		{http.MethodGet, "/articles/1/relationships/tags", getRelationships},
 		{http.MethodGet, "/tags/1/relationships/articles", getRelationships},
+		{http.MethodPatch, "/articles/1", updateResource},
 		// TODO: other methods
 	}
 

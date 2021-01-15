@@ -88,9 +88,6 @@ func (incs *Includes) extractIDs(rReq *RouterReq) {
 		for i := 0; i < d.Len(); i++ {
 			incs.appendResourceIncludes(d.At(i), fields, relData)
 		}
-	default:
-		// just no-op?
-		panic("wat")
 	}
 }
 
